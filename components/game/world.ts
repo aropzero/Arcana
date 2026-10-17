@@ -355,7 +355,8 @@ export function killEnemy(w: World, e: Enemy): void {
   if (e.hp > 0) e.hp = 0;
   const p = w.player;
   p.kills += 1;
-  burst(w, e.x, e.y, ENEMY_DEFS[e.kind].color, e.kind === "giant" ? 30 : 7, e.kind === "giant" ? 240 : 110);
+  // Ink-splat death like the source: black droplets scatter from the kill.
+  burst(w, e.x, e.y, "#1F1B16", e.kind === "giant" ? 34 : 10, e.kind === "giant" ? 260 : 150);
   dropOrbForKill(w, e);
 
   // Exploders detonate on death.
@@ -1188,15 +1189,13 @@ function updateOrbs(w: World, dt: number): void {
   for (const o of w.orbs) {
     const d = Math.hypot(o.x - p.x, o.y - p.y);
     if (d < range) {
-      const a = Math.atan2(p.y - o.y, p.x - o.x);
-      const pull = o.tier >= 2 ? 620 : 760;
-      o.vx += Math.cos(a) * pull * dt;
-      o.vy += Math.sin(a) * pull * dt;
-      const sp = Math.hypot(o.vx, o.vy);
-      if (sp > 560) {
-        o.vx = (o.vx / sp) * 560;
-        o.vy = (o.vy / sp) * 560;
-      }
+      // Pure homing: velocity is set directly each frame, so an orb can never
+      // stall or drift away once it is inside the pickup radius.
+      const nx = (p.x - o.x) / (d || 1);
+      const ny = (p.y - o.y) / (d || 1);
+      const speed = Math.min(780, 280 + (range - d) * 3.6);
+      o.vx = nx * speed;
+      o.vy = ny * speed;
     } else {
       o.vx *= 0.94;
       o.vy *= 0.94;
@@ -1206,7 +1205,7 @@ function updateOrbs(w: World, dt: number): void {
     o.x = clamp(o.x, 16, ARENA - 16);
     o.y = clamp(o.y, 16, ARENA - 16);
 
-    if (d < PLAYER_R + 10) {
+    if (d < PLAYER_R + 16) {
       collectOrb(w, o);
       continue;
     }

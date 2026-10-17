@@ -21,7 +21,7 @@ const ORB_COLORS = ["#4FC3F7", "#FFD54F", "#F06292", "#66BB6A"];
 interface FieldMark {
   x: number;
   y: number;
-  kind: 0 | 1 | 2; // crack / sprig / speck
+  kind: 0 | 1 | 2 | 3; // crack / grass / speck / blotch
   a: number;
   len: number;
 }
@@ -36,9 +36,9 @@ const FIELD_MARKS: FieldMark[] = [];
     FIELD_MARKS.push({
       x: rng() * ARENA,
       y: rng() * ARENA,
-      kind: (Math.floor(rng() * 3) as 0 | 1 | 2),
+      kind: (Math.floor(rng() * 4) as 0 | 1 | 2 | 3),
       a: rng() * Math.PI * 2,
-      len: 4 + rng() * 14,
+      len: 3 + rng() * 10,
     });
   }
 }
@@ -167,14 +167,18 @@ function drawWorld(c: SkCanvas, w: World, vw: number, vh: number): void {
     if (!inView(m.x, m.y)) continue;
     if (m.kind === 0) {
       // crack
-      c.drawLine(m.x, m.y, m.x + Math.cos(m.a) * m.len, m.y + Math.sin(m.a) * m.len, strokePaint(FIELD_MARK, 0.6, 1.4));
+      c.drawLine(m.x, m.y, m.x + Math.cos(m.a) * m.len, m.y + Math.sin(m.a) * m.len, strokePaint(FIELD_MARK, 0.4, 1.3));
     } else if (m.kind === 1) {
-      // grass sprig: three tiny fanned strokes
-      for (const da of [-0.4, 0, 0.4]) {
-        c.drawLine(m.x, m.y, m.x + Math.cos(m.a + da) * m.len * 0.6, m.y + Math.sin(m.a + da) * m.len * 0.6, strokePaint(INK, 0.55, 1.2));
+      // grass tuft: three short strokes fanned UP so they read as blades
+      for (const da of [-0.55, 0.05, 0.6]) {
+        const up = -Math.PI / 2 + da;
+        c.drawLine(m.x, m.y, m.x + Math.cos(up) * m.len * 0.7, m.y + Math.sin(up) * m.len * 0.7, strokePaint(INK, 0.5, 1.1));
       }
+    } else if (m.kind === 3) {
+      // soft dark blotch patch
+      c.drawCircle(m.x, m.y, 5 + m.len * 1.6, paint(FIELD_SPECK, 0.055));
     } else {
-      c.drawCircle(m.x, m.y, 1.3, paint(FIELD_SPECK, 0.7));
+      c.drawCircle(m.x, m.y, 1.2, paint(FIELD_SPECK, 0.6));
     }
   }
 
@@ -383,15 +387,23 @@ function drawPlayer(c: SkCanvas, w: World): void {
   c.drawLine(p.x - dx * 4, p.y - dy * 4 + 3, stx, sty, strokePaint("#3A2E20", alpha, 2.6));
   glowDot(c, stx, sty, 3.6, p.circleT > 0 ? "#C0392B" : "#E8B23C", alpha);
 
-  // Robe silhouette
+  // Wizard silhouette: flared robe, head, wide-brimmed pointed hat
   const p2 = paint(INK, alpha);
-  c.drawCircle(p.x, p.y - 2, PLAYER_R * 0.95, p2); // head/torso blob
-  c.drawCircle(p.x, p.y + 4, PLAYER_R * 0.75, p2); // robe base
-  // Pointed hat
-  c.drawCircle(p.x, p.y - 6, PLAYER_R * 0.6, p2);
-  c.drawLine(p.x - 6, p.y - 5, p.x + dx * 4, p.y - 13, strokePaint(INK, alpha, 3.2));
-  c.drawLine(p.x + 6, p.y - 5, p.x + dx * 4, p.y - 13, strokePaint(INK, alpha, 3.2));
-  c.drawCircle(p.x + dx * 4, p.y - 12, 3.4, p2);
+  const robe = Skia.Path.Make();
+  robe.moveTo(p.x - 10, p.y + 11);
+  robe.lineTo(p.x + 10, p.y + 11);
+  robe.lineTo(p.x + 2 + dx * 3, p.y - 7);
+  robe.lineTo(p.x - 2 + dx * 3, p.y - 7);
+  robe.close();
+  c.drawPath(robe, p2);
+  c.drawCircle(p.x + dx * 2, p.y - 9, 4.6, p2); // head
+  c.drawLine(p.x - 9, p.y - 11.5, p.x + 9, p.y - 11.5, strokePaint(INK, alpha, 3.4)); // brim
+  const cone = Skia.Path.Make();
+  cone.moveTo(p.x - 4.5, p.y - 12.5);
+  cone.lineTo(p.x + 4.5, p.y - 12.5);
+  cone.lineTo(p.x + dx * 5, p.y - 24);
+  cone.close();
+  c.drawPath(cone, p2); // tall pointed hat
 
   // Green HP bar above head (only when damaged)
   if (p.hp < p.maxHp) {
@@ -519,4 +531,193 @@ export function buildMenuPicture(vw: number, vh: number): SkPicture {
   }
 
   return rec.finishRecordingAsPicture();
+}
+
+// ---------------------------------------------------------------------------
+// Spell / passive mini-icons (drawn glyphs for level-up cards)
+// ---------------------------------------------------------------------------
+const ICON_COLORS: Record<string, string> = {
+  bolt: "#5B8DEF", flash: "#F5F2EA", inciner: "#FF7A1C", meteor: "#E2582C",
+  fireball: "#FF7A1C", lava: "#A6402A", spirit: "#B9D8F0", energy: "#7C6FF0",
+  satellite: "#E8E0C9", ray: "#F5F2EA", cyclone: "#6B6B6B", tsunami: "#4FC3F7",
+  frost: "#8ECBE8", blizzard: "#BFE8F5", shock: "#F2D94E", ezone: "#9CCC65",
+  thunder: "#F2D94E", armageddon: "#C0392B", cloak: "#8E8E8E", shield: "#E8B23C",
+  circle: "#C0392B", atk: "#C0392B", crit: "#E8842C", area: "#8AA1B8",
+  hp: "#6FCF3F", pickup: "#4FC3F7", speed: "#5EEAD4", duration: "#B08D3C",
+  cooldown: "#8A6FB8",
+};
+
+export function drawSpellIcon(c: SkCanvas, id: string, cx: number, cy: number, s: number): void {
+  const color = ICON_COLORS[id] ?? "#1F1B16";
+  const r = s * 0.34;
+  const w = Math.max(1.5, s * 0.075);
+  const st = strokePaint(color, 1, w);
+  const f = paint(color, 1);
+  switch (id) {
+    case "bolt":
+      for (let i = -1; i <= 1; i++) c.drawCircle(cx + i * r * 0.75, cy + (i === 0 ? 0 : i > 0 ? r * 0.4 : -r * 0.4), r * 0.24, f);
+      break;
+    case "flash":
+      c.drawLine(cx - r, cy - r * 0.6, cx - r * 0.15, cy - r * 0.1, st);
+      c.drawLine(cx - r * 0.15, cy - r * 0.1, cx - r * 0.4, cy + r * 0.35, st);
+      c.drawLine(cx - r * 0.4, cy + r * 0.35, cx + r, cy + r * 0.75, st);
+      break;
+    case "inciner":
+      for (const [ox, oy, rr] of [[-r * 0.6, r * 0.2, r * 0.24], [0, -r * 0.3, r * 0.3], [r * 0.6, r * 0.25, r * 0.2]] as const) {
+        c.drawCircle(cx + ox, cy + oy, rr, f);
+      }
+      break;
+    case "meteor":
+      c.drawCircle(cx + r * 0.5, cy + r * 0.5, r * 0.4, f);
+      c.drawLine(cx - r * 0.7, cy - r * 0.7, cx + r * 0.25, cy + r * 0.25, st);
+      break;
+    case "fireball": {
+      c.drawCircle(cx, cy, r * 0.5, f);
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2;
+        c.drawLine(cx + Math.cos(a) * r * 0.5, cy + Math.sin(a) * r * 0.5, cx + Math.cos(a) * r, cy + Math.sin(a) * r, st);
+      }
+      break;
+    }
+    case "lava":
+      c.drawCircle(cx, cy + r * 0.35, r * 0.85, st);
+      c.drawCircle(cx - r * 0.25, cy + r * 0.3, r * 0.16, f);
+      c.drawCircle(cx + r * 0.3, cy + r * 0.15, r * 0.12, f);
+      break;
+    case "spirit":
+      c.drawCircle(cx, cy, r * 0.32, f);
+      c.drawCircle(cx, cy, r * 0.85, strokePaint(color, 0.5, w * 0.8));
+      break;
+    case "energy":
+      for (let i = -1; i <= 1; i++) c.drawCircle(cx + i * r * 0.55, cy, r * 0.2, f);
+      c.drawLine(cx - r * 1.3, cy - r * 0.5, cx - r * 0.8, cy - r * 0.5, st);
+      c.drawLine(cx - r * 1.3, cy + r * 0.5, cx - r * 0.8, cy + r * 0.5, st);
+      break;
+    case "satellite":
+      c.drawCircle(cx, cy, r * 0.28, f);
+      c.drawOval(Skia.XYWHRect(cx - r, cy - r * 0.38, r * 2, r * 0.76), st);
+      c.drawCircle(cx + r * 0.94, cy, r * 0.14, f);
+      break;
+    case "ray":
+      c.drawCircle(cx, cy, r * 0.22, f);
+      for (const a of [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6]) {
+        c.drawLine(cx + Math.cos(a) * r * 0.3, cy + Math.sin(a) * r * 0.3, cx + Math.cos(a) * r * 1.25, cy + Math.sin(a) * r * 1.25, st);
+      }
+      break;
+    case "cyclone":
+      c.drawLine(cx - r, cy + r * 0.5, cx + r, cy + r * 0.5, st);
+      c.drawLine(cx - r * 0.7, cy, cx + r * 0.7, cy, st);
+      c.drawLine(cx - r * 0.45, cy - r * 0.5, cx + r * 0.45, cy - r * 0.5, st);
+      break;
+    case "tsunami":
+      c.drawLine(cx - r, cy + r * 0.35, cx, cy - r * 0.25, st);
+      c.drawLine(cx, cy - r * 0.25, cx + r, cy + r * 0.35, st);
+      c.drawLine(cx - r * 0.65, cy + r * 0.75, cx, cy + r * 0.2, st);
+      c.drawLine(cx, cy + r * 0.2, cx + r * 0.65, cy + r * 0.75, st);
+      break;
+    case "frost":
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI;
+        c.drawLine(cx - Math.cos(a) * r, cy - Math.sin(a) * r, cx + Math.cos(a) * r, cy + Math.sin(a) * r, st);
+      }
+      break;
+    case "blizzard":
+      for (let i = -1; i <= 1; i++) c.drawLine(cx + i * r * 0.7 - r * 0.2, cy - r * 0.6, cx + i * r * 0.7 + r * 0.2, cy + r * 0.6, st);
+      break;
+    case "shock":
+      c.drawLine(cx, cy - r, cx - r * 0.45, cy - r * 0.1, st);
+      c.drawLine(cx - r * 0.45, cy - r * 0.1, cx + r * 0.35, cy + r * 0.15, st);
+      c.drawLine(cx + r * 0.35, cy + r * 0.15, cx - r * 0.1, cy + r, st);
+      break;
+    case "ezone":
+      c.drawCircle(cx, cy, r * 0.9, strokePaint(color, 0.45, w));
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + 0.4;
+        c.drawCircle(cx + Math.cos(a) * r * 0.9, cy + Math.sin(a) * r * 0.9, r * 0.16, f);
+      }
+      break;
+    case "thunder":
+      c.drawCircle(cx - r * 0.3, cy - r * 0.45, r * 0.4, f);
+      c.drawCircle(cx + r * 0.35, cy - r * 0.5, r * 0.32, f);
+      c.drawLine(cx + r * 0.1, cy - r * 0.05, cx - r * 0.3, cy + r * 0.45, st);
+      c.drawLine(cx - r * 0.3, cy + r * 0.45, cx + r * 0.2, cy + r * 0.95, st);
+      break;
+    case "armageddon":
+      c.drawCircle(cx, cy, r * 0.4, f);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        c.drawLine(cx + Math.cos(a) * r * 0.5, cy + Math.sin(a) * r * 0.5, cx + Math.cos(a) * r * 1.2, cy + Math.sin(a) * r * 1.2, st);
+      }
+      break;
+    case "cloak":
+      c.drawCircle(cx, cy, r * 0.85, st);
+      c.drawLine(cx - r * 0.3, cy - r * 0.15, cx + r * 0.3, cy - r * 0.15, st);
+      c.drawCircle(cx - r * 0.22, cy + r * 0.3, r * 0.09, f);
+      break;
+    case "shield":
+      c.drawCircle(cx, cy, r * 0.95, st);
+      c.drawCircle(cx, cy, r * 0.5, strokePaint(color, 0.6, w * 0.8));
+      break;
+    case "circle":
+      c.drawCircle(cx, cy, r * 0.9, st);
+      c.drawLine(cx - r * 0.5, cy, cx + r * 0.5, cy, st);
+      c.drawLine(cx, cy - r * 0.5, cx, cy + r * 0.5, st);
+      break;
+    case "atk":
+      c.drawLine(cx, cy - r, cx, cy + r * 0.6, st);
+      c.drawLine(cx - r * 0.45, cy + r * 0.15, cx + r * 0.45, cy + r * 0.15, st);
+      c.drawCircle(cx, cy + r * 0.85, r * 0.12, f);
+      break;
+    case "crit":
+      c.drawLine(cx - r, cy - r, cx + r, cy + r, st);
+      c.drawLine(cx + r, cy - r, cx - r, cy + r, st);
+      c.drawLine(cx - r * 0.9, cy, cx + r * 0.9, cy, st);
+      break;
+    case "area":
+      c.drawCircle(cx, cy, r * 1.05, st);
+      c.drawCircle(cx, cy, r * 0.62, strokePaint(color, 0.6, w * 0.8));
+      c.drawCircle(cx, cy, r * 0.2, f);
+      break;
+    case "hp":
+      c.drawLine(cx, cy - r * 0.85, cx, cy + r * 0.85, strokePaint(color, 1, w * 1.9));
+      c.drawLine(cx - r * 0.85, cy, cx + r * 0.85, cy, strokePaint(color, 1, w * 1.9));
+      break;
+    case "pickup":
+      c.drawLine(cx - r * 0.55, cy - r * 0.7, cx - r * 0.55, cy + r * 0.25, st);
+      c.drawLine(cx + r * 0.55, cy - r * 0.7, cx + r * 0.55, cy + r * 0.25, st);
+      c.drawLine(cx - r * 0.55, cy + r * 0.25, cx + r * 0.55, cy + r * 0.25, st);
+      c.drawLine(cx - r * 0.55, cy + r * 0.55, cx + r * 0.55, cy + r * 0.55, st);
+      break;
+    case "speed":
+      c.drawLine(cx - r * 0.7, cy - r * 0.6, cx - r * 0.1, cy, st);
+      c.drawLine(cx - r * 0.1, cy, cx - r * 0.7, cy + r * 0.6, st);
+      c.drawLine(cx + r * 0.1, cy - r * 0.6, cx + r * 0.7, cy, st);
+      c.drawLine(cx + r * 0.7, cy, cx + r * 0.1, cy + r * 0.6, st);
+      break;
+    case "duration":
+      c.drawLine(cx - r * 0.7, cy - r * 0.75, cx + r * 0.7, cy - r * 0.75, st);
+      c.drawLine(cx - r * 0.7, cy + r * 0.75, cx + r * 0.7, cy + r * 0.75, st);
+      c.drawLine(cx - r * 0.55, cy - r * 0.75, cx + r * 0.55, cy + r * 0.75, st);
+      c.drawLine(cx + r * 0.55, cy - r * 0.75, cx - r * 0.55, cy + r * 0.75, st);
+      break;
+    case "cooldown":
+      c.drawCircle(cx, cy, r * 0.85, st);
+      c.drawLine(cx + r * 0.85, cy, cx + r * 0.35, cy - r * 0.45, st);
+      break;
+  }
+}
+
+const ICON_PICS = new Map<string, SkPicture>();
+/** Memoized 1:1 icon picture for level-up cards. */
+export function spellIconPicture(id: string, size: number): SkPicture {
+  const key = `${id}:${Math.round(size)}`;
+  let pic = ICON_PICS.get(key);
+  if (!pic) {
+    const rec = Skia.PictureRecorder();
+    const c = rec.beginRecording(Skia.XYWHRect(0, 0, size, size));
+    drawSpellIcon(c, id, size / 2, size / 2, size * 0.92);
+    pic = rec.finishRecordingAsPicture();
+    ICON_PICS.set(key, pic);
+  }
+  return pic;
 }

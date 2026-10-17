@@ -1,10 +1,11 @@
 // Arcana Survival — overlays: level-up choice, pause, game over.
-
+import { Canvas, Picture } from "@shopify/react-native-skia";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { UpgradeChoice } from "./engine";
 import { formatTime } from "./engine";
 import { PASSIVE_DEFS, SPELL_DEFS } from "./content";
+import { spellIconPicture } from "./render";
 import type { PassiveId, SpellId } from "./engine";
 import type { BestRecord } from "./storage";
 
@@ -30,9 +31,9 @@ export function LevelUpModal({ level, choices, onPick }: LevelUpProps) {
             onPress={() => onPick(i)}
             style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
           >
-            <Text style={[styles.cardGlyph, { color: glyphColor(choice) }]}>
-              {glyphChar(choice)}
-            </Text>
+            <Canvas style={styles.cardIcon}>
+              <Picture picture={spellIconPicture(choice.id, 40)} />
+            </Canvas>
             <View style={styles.cardBody}>
               <Text style={styles.cardTitle}>{choice.title}</Text>
               <Text style={styles.cardDesc}>{choice.desc}</Text>
@@ -44,17 +45,6 @@ export function LevelUpModal({ level, choices, onPick }: LevelUpProps) {
   );
 }
 
-function glyphColor(choice: UpgradeChoice): string {
-  if (choice.key === "heal") return "#4ADE80";
-  if (choice.kind === "skill") return PASSIVE_DEFS[choice.id as PassiveId].color;
-  return SPELL_DEFS[choice.id as SpellId].color;
-}
-
-function glyphChar(choice: UpgradeChoice): string {
-  if (choice.key === "heal") return "✚";
-  if (choice.kind === "skill") return "◆";
-  return choice.kind === "spell-new" ? "✦" : "▲";
-}
 
 // ---------------------------------------------------------------------------
 // Buttons
@@ -215,6 +205,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 16,
     padding: 16,
+  },
+  cardIcon: {
+    width: 40,
+    height: 40,
   },
   cardPressed: {
     backgroundColor: "#F5EFDC",

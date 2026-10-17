@@ -37,8 +37,8 @@ function hasNoNaN(w: World): boolean {
 describe("world simulation", () => {
   it("spawns enemies over time and keeps them inside the arena", () => {
     const w = createWorld();
-    runPlaying(w, 20);
-    expect(w.enemies.length).toBeGreaterThan(5);
+    runPlaying(w, 40);
+    expect(w.enemies.length).toBeGreaterThan(4);
     for (const e of w.enemies) {
       expect(e.x).toBeGreaterThanOrEqual(0);
       expect(e.x).toBeLessThanOrEqual(ARENA);

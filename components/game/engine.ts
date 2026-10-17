@@ -44,7 +44,7 @@ export const ARENA = 2600; // square arena side (world units)
 export const PLAYER_R = 13;
 export const PLAYER_BASE_SPEED = 180;
 export const PLAYER_BASE_HP = 100;
-export const BASE_PICKUP = 120;
+export const BASE_PICKUP = 200;
 
 export const MAX_ENEMIES = 150;
 export const MAX_BULLETS = 280;
