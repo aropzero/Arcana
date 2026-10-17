@@ -5,7 +5,7 @@
 import { PaintStyle, Skia } from "@shopify/react-native-skia";
 import type { SkCanvas, SkFont, SkPaint, SkPicture } from "@shopify/react-native-skia";
 
-import { ARENA, PLAYER_R, type Enemy, type World } from "./engine";
+import { ARENA, PLAYER_R, type Enemy, type InputState, type World } from "./engine";
 import { ENEMY_DEFS, RUNE_DATA } from "./content";
 import { areaMult } from "./world";
 
@@ -138,11 +138,53 @@ function glowDot(c: SkCanvas, x: number, y: number, r: number, color: string, al
 // ---------------------------------------------------------------------------
 // World picture
 // ---------------------------------------------------------------------------
-export function buildGamePicture(w: World, vw: number, vh: number): SkPicture {
+export function buildGamePicture(w: World, vw: number, vh: number, input: InputState): SkPicture {
   const rec = Skia.PictureRecorder();
   const canvas = rec.beginRecording(Skia.XYWHRect(0, 0, vw, vh));
   drawWorld(canvas, w, vw, vh);
+  drawJoystick(canvas, w, vw, vh, input);
   return rec.finishRecordingAsPicture();
+}
+
+// On-screen joystick: base + thumb at the touch point while dragging, and a
+// faint ghost hint at the bottom-left while idle so the control is visible.
+function drawJoystick(c: SkCanvas, w: World, vw: number, vh: number, input: InputState): void {
+  if (w.status !== "running") return;
+  const R = 52;
+  const TR = 22;
+  const on = input.active;
+  let bx: number;
+  let by: number;
+  let tx: number;
+  let ty: number;
+  if (on) {
+    bx = input.baseX;
+    by = input.baseY;
+    const d = Math.hypot(input.dx, input.dy);
+    const cl = d > R ? R / d : 1;
+    tx = bx + input.dx * cl;
+    ty = by + input.dy * cl;
+  } else {
+    bx = 88;
+    by = vh - 96;
+    tx = bx;
+    ty = by;
+  }
+  const a = on ? 1 : 0.45;
+  c.drawCircle(bx, by, R, paint(INK, 0.09 * a + 0.02));
+  c.drawCircle(bx, by, R, strokePaint(INK, 0.5 * a + 0.08, 2.6));
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    c.drawLine(
+      bx + Math.cos(ang) * (R - 9),
+      by + Math.sin(ang) * (R - 9),
+      bx + Math.cos(ang) * (R - 3),
+      by + Math.sin(ang) * (R - 3),
+      strokePaint(INK, 0.4 * a, 2),
+    );
+  }
+  c.drawCircle(tx, ty, TR, paint(INK, 0.72 * a + 0.08));
+  c.drawCircle(tx, ty, TR, strokePaint("#F5F2EA", 0.85 * a, 1.8));
 }
 
 function camera(w: World, vw: number, vh: number): { x: number; y: number } {
@@ -385,7 +427,6 @@ function drawPlayer(c: SkCanvas, w: World): void {
   const stx = p.x + dx * 15;
   const sty = p.y + dy * 15;
   c.drawLine(p.x - dx * 4, p.y - dy * 4 + 3, stx, sty, strokePaint("#3A2E20", alpha, 2.6));
-  glowDot(c, stx, sty, 3.6, p.circleT > 0 ? "#C0392B" : "#E8B23C", alpha);
 
   // Wizard silhouette: flared robe, head, wide-brimmed pointed hat
   const p2 = paint(INK, alpha);

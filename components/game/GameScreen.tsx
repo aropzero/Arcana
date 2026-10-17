@@ -101,7 +101,7 @@ export default function GameScreen() {
       stepWorld(w, dt, inputRef.current);
       const { w: vw, h: vh } = sizeRef.current;
       if (vw > 0 && vh > 0) {
-        setPicture(buildGamePicture(w, vw, vh));
+        setPicture(buildGamePicture(w, vw, vh, inputRef.current));
       }
       raf = requestAnimationFrame(tick);
     };
