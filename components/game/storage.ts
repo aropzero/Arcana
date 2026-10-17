@@ -7,6 +7,7 @@ export interface BestRecord {
   kills: number;
   time: number;
   level: number;
+  wave: number;
 }
 
 const KEY = "arcana.best.v1";
@@ -22,6 +23,7 @@ export async function loadBest(): Promise<BestRecord | null> {
       kills: typeof parsed.kills === "number" ? parsed.kills : 0,
       time: typeof parsed.time === "number" ? parsed.time : 0,
       level: typeof parsed.level === "number" ? parsed.level : 1,
+      wave: typeof parsed.wave === "number" ? parsed.wave : 0,
     };
   } catch {
     return null;

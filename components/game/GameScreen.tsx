@@ -1,5 +1,5 @@
 // Arcana Survival — game screen orchestrator: render loop, joystick gesture,
-// HUD refresh, level-up / pause / game-over overlays.
+// HUD refresh, banner, level-up / pause / game-over overlays.
 
 import { Canvas, Picture } from "@shopify/react-native-skia";
 import type { SkPicture } from "@shopify/react-native-skia";
@@ -11,48 +11,47 @@ import {
   AppState,
   Platform,
   StyleSheet,
+  Text,
   View,
   type LayoutChangeEvent,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
-import { emptyInput, formatTime } from "./engine";
-import type { UpgradeChoice, World, WorldStatus } from "./engine";
+import { formatTime, IDLE_INPUT } from "./engine";
+import type { Banner, UpgradeChoice, World, WorldStatus } from "./engine";
 import { chooseUpgrade } from "./content";
-import { stepWorld, createWorld } from "./world";
-import { buildPicture } from "./render";
+import { createWorld, stepWorld } from "./world";
+import { buildGamePicture } from "./render";
 import { loadBest, saveBest } from "./storage";
 import type { BestRecord } from "./storage";
 import { Hud } from "./Hud";
+import type { HudState } from "./Hud";
 import { GameOverOverlay, LevelUpModal, PauseOverlay } from "./Modals";
 
-interface HudState {
-  hp: number;
-  maxHp: number;
-  xp: number;
-  xpNext: number;
-  level: number;
-  wave: number;
-  time: number;
-  kills: number;
-  score: number;
+type FullHud = HudState & {
   status: WorldStatus;
   choices: UpgradeChoice[];
-}
+  banner: Banner | null;
+};
 
-function readHud(w: World): HudState {
+function readHud(w: World): FullHud {
+  const giant = w.giantId !== null ? w.enemies.find((e) => e.id === w.giantId) : undefined;
   return {
     hp: w.player.hp,
     maxHp: w.player.maxHp,
     xp: w.player.xp,
     xpNext: w.player.xpNext,
     level: w.player.level,
-    wave: Math.floor(w.t / 30) + 1,
+    wave: w.wave,
     time: w.t,
-    kills: w.kills,
+    kills: w.player.kills,
     score: w.score,
     status: w.status,
     choices: w.choices,
+    banner: w.banner,
+    horde: w.hordeT !== null,
+    giantHp: giant ? giant.hp : 0,
+    giantMax: giant ? giant.maxHp : 0,
   };
 }
 
@@ -65,17 +64,28 @@ function buzz(): void {
   }
 }
 
+function BannerView({ banner }: { banner: Banner | null }) {
+  if (!banner) return null;
+  const a = Math.min(1, banner.t / 0.4);
+  return (
+    <View pointerEvents="none" style={styles.bannerWrap}>
+      <Text style={[styles.bannerTitle, { color: banner.color, opacity: a }]}>{banner.title}</Text>
+      <Text style={[styles.bannerSub, { opacity: a }]}>{banner.sub}</Text>
+    </View>
+  );
+}
+
 export default function GameScreen() {
   useKeepAwake();
   const router = useRouter();
 
   const worldRef = useRef<World>(createWorld());
-  const inputRef = useRef(emptyInput());
+  const inputRef = useRef(IDLE_INPUT);
   const sizeRef = useRef({ w: 0, h: 0 });
   const savedRef = useRef(false);
 
   const [picture, setPicture] = useState<SkPicture | null>(null);
-  const [hud, setHud] = useState<HudState>(() => readHud(worldRef.current));
+  const [hud, setHud] = useState<FullHud>(() => readHud(worldRef.current));
   const [best, setBest] = useState<BestRecord | null>(null);
   const [newBest, setNewBest] = useState(false);
 
@@ -88,8 +98,10 @@ export default function GameScreen() {
       last = now;
       const w = worldRef.current;
       stepWorld(w, dt, inputRef.current);
-      const pic = buildPicture(w, sizeRef.current.w, sizeRef.current.h, inputRef.current);
-      if (pic) setPicture(pic);
+      const { w: vw, h: vh } = sizeRef.current;
+      if (vw > 0 && vh > 0) {
+        setPicture(buildGamePicture(w, vw, vh));
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -106,9 +118,10 @@ export default function GameScreen() {
         buzz();
         const record: BestRecord = {
           score: w.score,
-          kills: w.kills,
+          kills: w.player.kills,
           time: w.t,
           level: w.player.level,
+          wave: w.wave,
         };
         void saveBest(record).then((saved) => {
           if (saved) {
@@ -138,7 +151,6 @@ export default function GameScreen() {
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     sizeRef.current = { w: width, h: height };
-    worldRef.current.view = { w: width, h: height };
   }, []);
 
   const pan = Gesture.Pan()
@@ -155,10 +167,10 @@ export default function GameScreen() {
       inputRef.current.dy = e.y - inputRef.current.baseY;
     })
     .onEnd(() => {
-      inputRef.current.active = false;
+      inputRef.current = IDLE_INPUT;
     })
     .onFinalize(() => {
-      inputRef.current.active = false;
+      inputRef.current = IDLE_INPUT;
     });
 
   const pause = useCallback(() => {
@@ -171,7 +183,7 @@ export default function GameScreen() {
 
   const retry = useCallback(() => {
     worldRef.current = createWorld();
-    inputRef.current = emptyInput();
+    inputRef.current = IDLE_INPUT;
     savedRef.current = false;
     setNewBest(false);
     setHud(readHud(worldRef.current));
@@ -187,6 +199,8 @@ export default function GameScreen() {
     router.replace("/");
   }, [router]);
 
+  const { status } = hud;
+
   return (
     <View style={styles.root} onLayout={onLayout}>
       <GestureDetector gesture={pan}>
@@ -197,20 +211,22 @@ export default function GameScreen() {
         </View>
       </GestureDetector>
 
+      {status === "running" ? <BannerView banner={hud.banner} /> : null}
       <Hud hud={hud} onPause={pause} />
 
-      {hud.status === "levelup" ? (
+      {status === "levelup" ? (
         <LevelUpModal level={hud.level} choices={hud.choices} onPick={pick} />
       ) : null}
-      {hud.status === "paused" ? (
+      {status === "paused" ? (
         <PauseOverlay onResume={resume} onRetry={retry} onQuit={quit} />
       ) : null}
-      {hud.status === "dead" ? (
+      {status === "dead" ? (
         <GameOverOverlay
           score={hud.score}
           time={formatTime(hud.time)}
           kills={hud.kills}
           level={hud.level}
+          wave={hud.wave}
           best={best}
           newBest={newBest}
           onRetry={retry}
@@ -225,5 +241,26 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#0B0A14",
+  },
+  bannerWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: "30%",
+    alignItems: "center",
+  },
+  bannerTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: 3,
+    textShadowColor: "#000000",
+    textShadowRadius: 10,
+  },
+  bannerSub: {
+    color: "#C4B5FD",
+    fontSize: 13,
+    marginTop: 4,
+    textShadowColor: "#000000",
+    textShadowRadius: 8,
   },
 });

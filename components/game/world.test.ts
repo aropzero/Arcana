@@ -1,23 +1,26 @@
-// Headless simulation tests for the Arcana Survival world step.
+// Headless simulation tests for the Arcana Survival V2 world step.
 import { describe, expect, it } from "vitest";
 
-import { ARENA, MAX_ENEMIES } from "./engine";
-import { chooseUpgrade, nextXp, SPELL_DEFS } from "./content";
-import { createWorld, stepWorld } from "./world";
-import type { InputState } from "./engine";
+import { ARENA, IDLE_INPUT, MAX_ENEMIES, xpForLevel, type InputState, type World } from "./engine";
+import { chooseUpgrade, SPELL_DEFS, SPELL_LIST } from "./content";
+import { createWorld, killEnemy, nextDeathTime, stepWorld } from "./world";
 
 function idleInput(): InputState {
   return { active: false, baseX: 0, baseY: 0, dx: 0, dy: 0 };
 }
 
-function run(w: ReturnType<typeof createWorld>, seconds: number, input = idleInput()): void {
-  const steps = Math.round(seconds / (1 / 60));
+/** Runs the sim for `seconds`, auto-picking upgrades when level-ups occur. */
+function runPlaying(w: World, seconds: number, input = idleInput()): void {
+  const steps = Math.round(seconds * 60);
   for (let i = 0; i < steps; i++) {
     stepWorld(w, 1 / 60, input);
+    if (w.status === "levelup") {
+      chooseUpgrade(w, 0);
+    }
   }
 }
 
-function hasNoNaN(w: ReturnType<typeof createWorld>): boolean {
+function hasNoNaN(w: World): boolean {
   const numbers: number[] = [
     w.player.x,
     w.player.y,
@@ -26,7 +29,7 @@ function hasNoNaN(w: ReturnType<typeof createWorld>): boolean {
     w.score,
     ...w.enemies.flatMap((e) => [e.x, e.y, e.hp]),
     ...w.bullets.flatMap((b) => [b.x, b.y]),
-    ...w.gems.flatMap((g) => [g.x, g.y]),
+    ...w.orbs.flatMap((o) => [o.x, o.y]),
   ];
   return numbers.every((n) => Number.isFinite(n));
 }
@@ -34,7 +37,7 @@ function hasNoNaN(w: ReturnType<typeof createWorld>): boolean {
 describe("world simulation", () => {
   it("spawns enemies over time and keeps them inside the arena", () => {
     const w = createWorld();
-    run(w, 20);
+    runPlaying(w, 20);
     expect(w.enemies.length).toBeGreaterThan(5);
     for (const e of w.enemies) {
       expect(e.x).toBeGreaterThanOrEqual(0);
@@ -47,54 +50,77 @@ describe("world simulation", () => {
 
   it("auto-fires bolts and scores kills while the player is idle", () => {
     const w = createWorld();
-    run(w, 45);
-    expect(w.kills).toBeGreaterThan(0);
+    runPlaying(w, 45);
+    expect(w.player.kills).toBeGreaterThan(0);
     expect(w.score).toBeGreaterThan(0);
     expect(hasNoNaN(w)).toBe(true);
   });
 
   it("caps the alive enemies at MAX_ENEMIES", () => {
     const w = createWorld();
-    run(w, 90);
+    w.player.maxHp = 1_000_000;
+    w.player.hp = 1_000_000;
+    runPlaying(w, 120);
     expect(w.enemies.length).toBeLessThanOrEqual(MAX_ENEMIES);
   });
 
-  it("levels up on XP collection and applies a chosen upgrade", () => {
+  it("levels up through mana orbs and applies a chosen upgrade", () => {
     const w = createWorld();
-    w.player.xp = nextXp(w.player.level);
-    // Drop a gem right on the player; collection triggers the level check.
-    w.gems.push({ x: w.player.x, y: w.player.y, v: 1 });
-    const snapshot = () =>
-      JSON.stringify({
-        spells: w.spells,
-        passives: w.passives,
-        hp: w.player.hp,
-        maxHp: w.player.maxHp,
-        speed: w.player.speed,
-        dmgMult: w.player.dmgMult,
-        magnet: w.player.magnet,
-        regen: w.player.regen,
-      });
-    const before = snapshot();
+    w.player.xp = xpForLevel(w.player.level) - 1;
+    w.orbs.push({ id: w.nextId++, x: w.player.x, y: w.player.y, vx: 0, vy: 0, tier: 0, v: 1 });
+    const before = JSON.stringify({ spells: w.spells, player: { ...w.player } });
     stepWorld(w, 1 / 60, idleInput());
     expect(w.status).toBe("levelup");
     expect(w.choices.length).toBe(3);
-
     chooseUpgrade(w, 0);
-    expect(snapshot()).not.toBe(before);
+    expect(JSON.stringify({ spells: w.spells, player: { ...w.player } })).not.toBe(before);
   });
 
-  it("all four spells eventually fire in a long battle", () => {
+  it("fires every one of the 21 spells without errors", () => {
     const w = createWorld();
-    // Grant every spell at a decent level.
-    w.spells = (Object.keys(SPELL_DEFS) as (keyof typeof SPELL_DEFS)[]).map(
-      (id) => ({ id, level: 3, cd: 0 }),
-    );
-    w.player.xp = 9999; // keep leveling to avoid levelup stalls
-    run(w, 30);
-    // The fight should have produced effects of every kind.
-    expect(w.kills).toBeGreaterThan(10);
+    w.spells = SPELL_LIST.map((id) => ({ id, level: Math.min(3, SPELL_DEFS[id].maxLevel), cd: 0.2 }));
+    runPlaying(w, 30);
+    expect(w.player.kills).toBeGreaterThan(20);
     expect(hasNoNaN(w)).toBe(true);
+  });
+
+  it("runs a death horde: clock freezes, giant spawns, and clearing resumes time", () => {
+    const w = createWorld();
+    runPlaying(w, 10); // build a small economy
+    w.t = nextDeathTime(w.deathIdx) + 0.2;
+    stepWorld(w, 0.5, idleInput());
+    expect(w.hordeT).not.toBeNull();
+    expect(w.giantId).not.toBeNull();
+    const giant = w.enemies.find((e) => e.id === w.giantId);
+    expect(giant).toBeDefined();
+    const tFrozen = w.t;
+    stepWorld(w, 1, idleInput());
+    expect(w.t).toBe(tFrozen); // clock frozen during the horde
+    if (giant) {
+      giant.hp = 0;
+      killEnemy(w, giant);
+    }
+    stepWorld(w, 0.2, idleInput());
+    expect(w.hordeT).toBeNull();
+  });
+
+  it("unlocks later enemy kinds over time", () => {
+    const w = createWorld();
+    w.player.maxHp = 1_000_000;
+    w.player.hp = 1_000_000;
+    runPlaying(w, 260);
+    const kinds = new Set(w.enemies.map((e) => e.kind));
+    expect(kinds.has("runner")).toBe(true);
+    expect(kinds.has("brute")).toBe(true);
+    expect(kinds.has("caster")).toBe(true);
+  });
+
+  it("picks up runes and gains their effect", () => {
+    const w = createWorld();
+    w.runes.push({ id: w.nextId++, kind: "invuln", x: w.player.x, y: w.player.y, t: 0 });
+    stepWorld(w, 1 / 60, idleInput());
+    expect(w.player.invulnT).toBeGreaterThan(0);
+    expect(w.runes.length).toBe(0);
   });
 
   it("ends the game when HP is exhausted", () => {
@@ -102,7 +128,6 @@ describe("world simulation", () => {
     w.player.hp = 1;
     w.player.x = ARENA / 2;
     w.player.y = ARENA / 2;
-    // Drop a horde on top of the player.
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * Math.PI * 2;
       w.enemies.push({
@@ -116,13 +141,17 @@ describe("world simulation", () => {
         dmg: 10,
         r: 13,
         xp: 1,
+        elite: false,
         hitCd: 0,
         slowT: 0,
-        elite: false,
+        flashT: 0,
+        aiT: 0,
         seed: i,
+        orbCd: 0,
+        waveHit: -1,
       });
     }
-    run(w, 10);
+    runPlaying(w, 10);
     expect(w.status).toBe("dead");
     expect(w.player.hp).toBe(0);
   });
@@ -131,7 +160,7 @@ describe("world simulation", () => {
     const w = createWorld();
     const startX = w.player.x;
     const input: InputState = { active: true, baseX: 0, baseY: 0, dx: 64, dy: 0 };
-    run(w, 1, input);
+    runPlaying(w, 1, input);
     expect(w.player.x).toBeGreaterThan(startX);
   });
 });

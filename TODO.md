@@ -1,54 +1,50 @@
 # TODO — Arcana Survival
 
-Game aksi-survival top-down (Expo/React Native, Android APK). Pemain = penyihir; mantera
-menembak otomatis; gelombang monster makin sulit; level up + upgrade; skor dari waktu
-bertahan & kill. Pengembangan berkelanjutan: pengguna adalah penguji-kritikus, setiap versi
-= checkpoint + ringkasan perubahan; uji cepat lewat Expo Go.
+Game aksi-survival top-down (Expo/React Native, Android APK) yang meniru rasa bermain
+Magic Survival (LEME) dengan kode, nama, dan aset 100% orisinal. Pemain = penyihir;
+mantera menembak otomatis; horde monster makin brutal; naik level + pilih upgrade.
+Pengembangan berkelanjutan: pengguna adalah penguji-kritikus; setiap versi = checkpoint
+dengan changelog; uji cepat lewat Expo Go, rilis lewat APK.
 
-## V1 — Vertical slice (uji Expo Go + APK pertama)
+## V2.0 — Mimikri sistem inti (versi saat ini)
 
-- [x] **Gerak bebas dengan joystick virtual**
-      Saat permainan berjalan, menyentuh layar memunculkan joystick mengambang di titik
-      sentuh; menggeser jari menggerakkan penyihir ke segala arah dengan kecepatan
-      proporsional jarak geser; melepas jari menghentikan gerakan. Kamera mengikuti pemain
-      pada arena yang lebih besar dari layar.
-- [x] **Mantera menembak otomatis**
-      Penyihir otomatis menembak Bolt Sihir ke monster terdekat dalam jangkauan, tanpa tombol
-      serang, berulang sesuai cooldown. Mantera tambahan (Bola Api, Petir Berantai, Nova Es)
-      juga berjalan otomatis setelah diperoleh dari upgrade.
-- [x] **Gelombang monster makin sulit**
-      Monster muncul terus dari luar layar; interval spawn makin pendek dan statistik musuh
-      (HP, damage, jumlah) meningkat seiring waktu. Jenis baru muncul bertahap: Crawler
-      (dasar) → Runner (cepat) → Brute (kuat, lambat).
-- [x] **Level up dengan pilihan upgrade**
-      Monster yang mati menjatuhkan kristal XP yang tertarik ke pemain (magnet). XP penuh
-      menaikkan level: simulasi terjeda, tampil 3 pilihan acak (mantera baru / penguatan
-      mantera / statistik pasif), memilih satu melanjutkan permainan.
-- [x] **HUD dalam permainan**
-      Tampil selama bermain: bar HP, bar XP + nomor level, gelombang, waktu bertahan, jumlah
-      kill, dan tombol jeda.
-- [x] **Skor, kill, dan rekor tersimpan**
-      Skor dihitung dari waktu bertahan + jumlah kill + level. Game over menampilkan skor;
-      rekor tertinggi tersimpan persisten (AsyncStorage) dan ditampilkan di menu utama.
-- [x] **Menu utama, jeda, dan game over**
-      Menu utama: judul, tombol Main, rekor tertinggi, nomor versi, cara main singkat.
-      Jeda menghentikan simulasi penuh (lanjut / keluar ke menu). Game over: ringkasan skor
-      + Main Lagi + kembali ke Menu.
-- [x] **Aset orisinal prosedural**
-      Seluruh visual digambar sendiri via Skia (penyihir, 3 jenis monster, proyektil, efek
-      cahaya, partikel, latar arena bergaya neon-occult). Tidak ada aset yang disalin dari
-      game sumber.
-- [x] **Berjalan di Expo Go dan siap build APK**
-      Dependensi kompatibel Expo Go SDK 57 (Skia bundled); web preview untuk inspeksi cepat;
-      checkpoint berisi konfigurasi app.config.ts + ikon launcher khas sehingga Dashboard
-      dapat mem-build APK.
-- [x] **Alur iterasi versi**
-      Setiap perubahan yang siap uji dikommit sebagai checkpoint dengan pesan ringkasan
-      perubahan versi (changelog) untuk dinilai pengguna.
+- [x] **21 mantera aktif** (17 sampai Lv.7 + 4 utilitas Lv.5): Peluru Sihir, Kejutan Kilat,
+      Pembakaran, Meteor, Bola Api, Zona Lava, Roh Kecil, Peluru Energi, Satelit, Sinar
+      Arkana, Tomadoi, Gelombang Pasang, Nova Es, Badai Es, Kejut Listrik, Zona Elektro,
+      Badai Guntur + Bencana Total, Menghilang, Perisai, Lingkar Sihir — perilaku nyata
+      berbeda per mantera (proyektil, zona DoT, orbit, summon, beam, hujan meteor/guntur,
+      gelombang tepi, buff).
+- [x] **8 pasif** sampai Lv.7: Serangan, Kritis, Area, Nyawa, Jangkauan, Kecepatan, Durasi,
+      Pendinginan — memengaruhi semua mantera; kritis menghasilkan angka damage kuning.
+- [x] **Orb mana 4 tingkat** (biru 1 / kuning 5 / merah muda 25 / hijau 60 + pulih nyawa)
+      menggantikan kristal XP; kurva level cepat di awal lalu melandai, seperti sumber.
+- [x] **Rune lapangan 5 jenis** (kekebalan, magnet, amuk serangan+kecepatan, pemusnah
+      massal di layar, elite [bunuh 3 elite → hadiah orb]) + hati penyembuh drop langka.
+- [x] **8 tipe musuh**: Crawler, Pelari, Juggernaut, Penyihir Bayangan (ranged), Peledak,
+      Pembelah (+mini), mini, Raksasa (giant/boss); varian elite (outline glow, HPx4, XPx8).
+- [x] **Gelombang Kematian**: horde event pada 6:00, 11:00, 15:00, 18:00 lalu tiap 2:30 —
+      timer berhenti, langit merah, Raksasa muncul (HP membesar per event), banner +
+      bar HP raksasa di HUD; setelah Raksasa tumbang, waktu berjalan lagi.
+- [x] **Rasa tepuk**: angka damage melayang (kritis = kuning besar), screen shake,
+      hit flash, vignette HP rendah, ledakan kematian musuh.
+- [x] **Pacing & balancing**: naik level deras di menit awal; tekanan eksponensial;
+      build lemah tumbang wajar di menit 6–12.
 
-## V2+ — Backlog (menunggu umpan balik penguji)
+## V3+ — Antrean berikutnya (menunggu kritik penguji)
 
-- Mantera & musuh tambahan, boss berkala
-- Meta-progresion (upgrade permanen antar sesi), misi harian
-- Efek suara & musik, haptik lebih kaya
-- Papan skor online (server/database sudah tersedia di starter) bila diminta
+- Kombinasi Mantera (fusi) di level 25/50/75 — satu mantera dikorbankan untuk
+  memperkuat yang lain (game sumber punya 60 resep; kita mulai ~10).
+- Talenta saat mantera mencapai level maksimum (mengubah perilaku, bukan angka saja).
+- Artefak dari peti (pilih 1 dari 3; modul build: ledakan saat naik level, damage %HP, dll).
+- Kelas pra-run, stage dengan latar/monster unik, riset permanen (meta progression;
+  penyimpanan server sudah tersedia bila diminta).
+
+## V1.0 — Vertical slice (selesai, checkpoint 38bd01a)
+
+- [x] Joystick virtual mengambang; gerak bebas; kamera mengikuti pemain di arena 2600x2600.
+- [x] Mantera otomatis + gelombang musuh + XP/level + 3 kartu upgrade acak.
+- [x] HUD lengkap (HP, XP/level, gelombang, waktu, kill, skor, jeda) + rekor AsyncStorage.
+- [x] Menu utama, jeda (auto-pause pindah aplikasi), game over + main ulang.
+- [x] Aset orisinal prosedural (Skia), ikon launcher khas, web preview (CanvasKit
+      self-hosted, deferred registration), 7 uji unit simulasi, tsc bersih.
+- [x] Alur iterasi: checkpoint per versi dengan changelog untuk dinilai pengguna.
