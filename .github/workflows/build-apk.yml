@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Fetch Skia prebuilt libraries
+        run: npx install-skia
+
       - name: Generate native Android project
         run: npx expo prebuild -p android --no-install
 
