@@ -1,5 +1,14 @@
 # TODO — Arcana Survival
 
+## Rutinitas rilis (berlaku setiap update)
+
+Setiap checkpoint: commit → `git push origin main` (kanonik Manus) → `git push github main`
+(repo pengguna: github.com/aropzero/Arcana). Push ke GitHub otomatis memicu workflow
+`.github/workflows/build-apk.yml` yang membangun APK (artifact `arcana-survival-apk`,
+paling lama ±15 menit). Catatan CI: Skia butuh `npx install-skia` setelah install; pnpm
+versi mengikuti `packageManager` package.json; token push tersimpan di `.git/config`
+remote `github` (tidak pernah terkomit).
+
 Game aksi-survival top-down (Expo/React Native, Android APK) yang meniru rasa bermain
 Magic Survival (LEME) dengan kode, nama, dan aset 100% orisinal. Pemain = penyihir;
 mantera menembak otomatis; horde monster makin brutal; naik level + pilih upgrade.
