@@ -453,8 +453,8 @@ function spawnDirector(w: World, dt: number): void {
   w.spawnT -= dt;
   if (w.spawnT > 0 || w.enemies.length >= MAX_ENEMIES) return;
   const t = w.t;
-  w.spawnT = Math.max(0.3, 1.1 - t / 130);
-  const batch = 2 + Math.floor(t / 200);
+  w.spawnT = Math.max(0.3, 1.35 - t / 140);
+  const batch = 1 + Math.floor(t / 220);
   for (let i = 0; i < batch; i++) {
     const pos = ringPos(w, 480, 660);
     const elite = t > 300 && Math.random() < 0.03 + t / 22000;

@@ -5,6 +5,7 @@ import { Canvas, Picture } from "@shopify/react-native-skia";
 import type { SkPicture } from "@shopify/react-native-skia";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
+import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -203,6 +204,7 @@ export default function GameScreen() {
 
   return (
     <View style={styles.root} onLayout={onLayout}>
+      <StatusBar style="dark" />
       <GestureDetector gesture={pan}>
         <View style={StyleSheet.absoluteFill}>
           <Canvas style={StyleSheet.absoluteFill}>

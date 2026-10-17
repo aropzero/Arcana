@@ -1,8 +1,8 @@
-// Arcana Survival — in-game HUD: HP, mana (XP), wave, timer, kills, score,
-// giant boss bar during death hordes, pause button.
+// Arcana Survival — in-game HUD: blue mana bar on the top edge, cream clock
+// band, stat chips, giant bar during death hordes. Minimal ink style.
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { formatTime } from "./engine";
 
@@ -28,20 +28,24 @@ interface HudProps {
 
 export function Hud({ hud, onPause }: HudProps) {
   const insets = useSafeAreaInsets();
-  const hpPct = Math.max(0, Math.min(1, hud.hp / hud.maxHp)) * 100;
   const xpPct = Math.max(0, Math.min(1, hud.xp / hud.xpNext)) * 100;
   const giantPct = hud.giantMax > 0 ? Math.max(0, Math.min(1, hud.giantHp / hud.giantMax)) * 100 : 0;
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { top: insets.top + 8 }]}>
-      <View style={styles.row}>
-        <View style={styles.panel}>
-          <Text style={styles.hpLabel}>
-            HP {Math.ceil(hud.hp)}/{Math.round(hud.maxHp)}
+    <View pointerEvents="box-none" style={styles.root}>
+      {/* Mana bar pinned to the very top edge */}
+      <View style={styles.manaTrack} pointerEvents="none">
+        <View style={[styles.manaFill, { width: `${xpPct}%` }]} />
+      </View>
+
+      {/* Cream band: portrait, clock, pause */}
+      <View style={[styles.band, { paddingTop: insets.top }]}>
+        <Image source={require("../../assets/images/icon.png")} style={styles.portrait} />
+        <View style={styles.clockBox}>
+          <Text style={[styles.clock, hud.horde && styles.clockDanger]}>{formatTime(hud.time)}</Text>
+          <Text style={styles.subLabel}>
+            {hud.horde ? "WAKTU BERHENTI" : hud.wave > 0 ? `Gelombang Kematian ${hud.wave}` : "Bertahan"}
           </Text>
-          <View style={styles.barBg}>
-            <View style={[styles.barFill, { width: `${hpPct}%`, backgroundColor: "#EF4444" }]} />
-          </View>
         </View>
         <Pressable
           onPress={onPause}
@@ -53,29 +57,22 @@ export function Hud({ hud, onPause }: HudProps) {
         </Pressable>
       </View>
 
-      <View style={styles.row}>
-        <View style={[styles.panel, styles.levelBadge]}>
-          <Text style={styles.levelText}>LV {hud.level}</Text>
-        </View>
-        <View style={[styles.panel, styles.xpPanel]}>
-          <View style={styles.barBg}>
-            <View style={[styles.barFill, { width: `${xpPct}%`, backgroundColor: "#60A5FA" }]} />
-          </View>
-        </View>
+      {/* Stat chips */}
+      <View style={styles.stats} pointerEvents="none">
+        <Text style={styles.chip}>LV {hud.level}</Text>
+        <Text style={styles.chip}>
+          HP {Math.ceil(hud.hp)}/{Math.round(hud.maxHp)}
+        </Text>
+        <Text style={styles.chip}>Kill {hud.kills}</Text>
+        <Text style={styles.chip}>Skor {hud.score}</Text>
       </View>
 
-      <View style={[styles.row, styles.statsRow]}>
-        <Text style={[styles.stat, hud.horde && styles.statDanger]}>{formatTime(hud.time)}</Text>
-        <Text style={styles.stat}>{hud.wave > 0 ? `Gelombang Kematian ${hud.wave}` : "Zona damai"}</Text>
-        <Text style={styles.stat}>Kill {hud.kills}</Text>
-        <Text style={[styles.stat, styles.score]}>Skor {hud.score}</Text>
-      </View>
-
+      {/* Giant boss bar during death hordes */}
       {hud.horde && hud.giantMax > 0 ? (
-        <View style={styles.hordeWrap}>
+        <View style={styles.hordeWrap} pointerEvents="none">
           <Text style={styles.hordeLabel}>RAKSAUSA</Text>
-          <View style={[styles.barBg, styles.hordeBarBg]}>
-            <View style={[styles.barFill, { width: `${giantPct}%`, backgroundColor: "#F43F5E" }]} />
+          <View style={styles.hordeTrack}>
+            <View style={[styles.hordeFill, { width: `${giantPct}%` }]} />
           </View>
         </View>
       ) : null}
@@ -84,98 +81,115 @@ export function Hud({ hud, onPause }: HudProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  root: {
     position: "absolute",
-    left: 12,
-    right: 12,
-    gap: 6,
+    left: 0,
+    right: 0,
+    top: 0,
   },
-  row: {
+  manaTrack: {
+    height: 5,
+    width: "100%",
+    backgroundColor: "rgba(20, 25, 30, 0.55)",
+  },
+  manaFill: {
+    height: "100%",
+    backgroundColor: "#4A9FF5",
+  },
+  band: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
+    backgroundColor: "#E8E0C9",
+    borderBottomWidth: 2,
+    borderBottomColor: "#1F1B16",
+    paddingHorizontal: 12,
+    paddingBottom: 6,
   },
-  panel: {
-    backgroundColor: "rgba(10, 8, 24, 0.72)",
-    borderColor: "#2A2450",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  portrait: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#C0392B",
+    backgroundColor: "#1F1B16",
   },
-  hpLabel: {
-    color: "#FCA5A5",
+  clockBox: {
+    flex: 1,
+    alignItems: "center",
+  },
+  clock: {
+    color: "#1F1B16",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 2,
+  },
+  clockDanger: {
+    color: "#C0392B",
+  },
+  subLabel: {
+    color: "#6B5E4A",
     fontSize: 10,
     fontWeight: "700",
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  barBg: {
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.14)",
-    overflow: "hidden",
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  levelBadge: {
-    minWidth: 56,
-    alignItems: "center",
-  },
-  levelText: {
-    color: "#C4B5FD",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  xpPanel: {
-    flex: 1,
-  },
-  statsRow: {
-    justifyContent: "space-between",
-    paddingHorizontal: 2,
-  },
-  stat: {
-    color: "#8B85B0",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  statDanger: {
-    color: "#FCA5A5",
-  },
-  score: {
-    color: "#E5E0F5",
-  },
-  hordeWrap: {
-    alignItems: "center",
-    gap: 3,
-    marginTop: 2,
-  },
-  hordeLabel: {
-    color: "#F87171",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 4,
-  },
-  hordeBarBg: {
-    height: 9,
-    width: "72%",
-    backgroundColor: "rgba(244, 63, 94, 0.18)",
+    letterSpacing: 1.5,
   },
   pauseBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "rgba(10, 8, 24, 0.72)",
-    borderColor: "#2A2450",
-    borderWidth: 1,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "#1F1B16",
     alignItems: "center",
     justifyContent: "center",
   },
   pauseText: {
-    color: "#C4B5FD",
-    fontSize: 16,
-    fontWeight: "800",
+    color: "#E8E0C9",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  stats: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  chip: {
+    color: "#EFE6D6",
+    backgroundColor: "rgba(31, 27, 22, 0.68)",
+    borderColor: "#1F1B16",
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  hordeWrap: {
+    alignItems: "center",
+    marginTop: 10,
+    gap: 3,
+  },
+  hordeLabel: {
+    color: "#EFE6D6",
+    backgroundColor: "rgba(122, 31, 20, 0.85)",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 4,
+  },
+  hordeTrack: {
+    width: "62%",
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(31, 27, 22, 0.7)",
+    borderWidth: 1,
+    borderColor: "#C0392B",
+    overflow: "hidden",
+  },
+  hordeFill: {
+    height: "100%",
+    backgroundColor: "#C0392B",
   },
 });

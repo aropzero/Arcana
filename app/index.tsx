@@ -1,4 +1,4 @@
-// Arcana Survival — main menu.
+// Arcana Survival — main menu in the hand-drawn mint-ink style.
 
 import { Canvas, Picture } from "@shopify/react-native-skia";
 import type { SkPicture } from "@shopify/react-native-skia";
@@ -35,14 +35,14 @@ export default function MenuScreen() {
 
   return (
     <View style={styles.root} onLayout={onLayout}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <Canvas style={StyleSheet.absoluteFill}>
           {pic ? <Picture picture={pic} /> : null}
         </Canvas>
       </View>
 
-      <View style={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 20 }]}>
+      <View style={[styles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.titleBlock}>
           <Text style={styles.titleTop}>ARCANA</Text>
           <Text style={styles.titleBottom}>SURVIVAL</Text>
@@ -68,9 +68,10 @@ export default function MenuScreen() {
 
         <View style={styles.howTo}>
           <Text style={styles.howToTitle}>CARA MAIN</Text>
-          <Text style={styles.howToLine}>• Geser jari di layar untuk menggerakkan penyihir.</Text>
+          <Text style={styles.howToLine}>• Geser jari untuk menggerakkan penyihir.</Text>
           <Text style={styles.howToLine}>• Mantera menembak otomatis — fokus bertahan hidup.</Text>
-          <Text style={styles.howToLine}>• Kumpulkan kristal XP, naik level, pilih penguatan.</Text>
+          <Text style={styles.howToLine}>• Kumpulkan orb mana, naik level, pilih mantera.</Text>
+          <Text style={styles.howToLine}>• Gelombang Kematian datang di menit 6:00 — waspadai Raksasa.</Text>
         </View>
 
         <Text style={styles.version}>
@@ -84,7 +85,7 @@ export default function MenuScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#0B0A14",
+    backgroundColor: "#63D1C1",
   },
   content: {
     flex: 1,
@@ -93,71 +94,67 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     alignItems: "center",
-    marginTop: 26,
+    marginTop: 20,
   },
   titleTop: {
-    color: "#EDE9FE",
-    fontSize: 44,
+    color: "#101820",
+    fontSize: 46,
     fontWeight: "900",
     letterSpacing: 10,
-    textShadowColor: "#7C3AED",
-    textShadowRadius: 24,
   },
   titleBottom: {
-    color: "#5EEAD4",
+    color: "#0E3B34",
     fontSize: 24,
     fontWeight: "800",
     letterSpacing: 12,
     marginTop: 2,
-    textShadowColor: "#14B8A6",
-    textShadowRadius: 16,
   },
   tagline: {
-    color: "#8B85B0",
+    color: "#0E3B34",
     fontSize: 13,
     letterSpacing: 2,
     marginTop: 10,
+    opacity: 0.85,
   },
   spacer: {
     flex: 1,
   },
   bestPanel: {
     alignItems: "center",
-    backgroundColor: "rgba(21, 18, 40, 0.8)",
-    borderColor: "#3B2F63",
-    borderWidth: 1,
-    borderRadius: 14,
+    backgroundColor: "rgba(232, 224, 201, 0.92)",
+    borderColor: "#101820",
+    borderWidth: 2,
+    borderRadius: 12,
     paddingHorizontal: 18,
     paddingVertical: 10,
     marginBottom: 18,
   },
   bestTitle: {
-    color: "#A5A0C8",
+    color: "#3A3226",
     fontSize: 11,
     letterSpacing: 3,
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: 4,
   },
   bestValue: {
-    color: "#E5E0F5",
+    color: "#1F1B16",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   playBtn: {
-    backgroundColor: "#7C3AED",
-    borderRadius: 18,
+    backgroundColor: "#101820",
+    borderRadius: 14,
     paddingVertical: 18,
-    paddingHorizontal: 74,
-    shadowColor: "#7C3AED",
-    shadowOpacity: 0.6,
-    shadowRadius: 22,
+    paddingHorizontal: 76,
+    borderColor: "#E8E0C9",
+    borderWidth: 2,
   },
   playPressed: {
-    opacity: 0.8,
+    opacity: 0.82,
     transform: [{ scale: 0.97 }],
   },
   playLabel: {
-    color: "#F5F3FF",
+    color: "#E8E0C9",
     fontSize: 22,
     fontWeight: "900",
     letterSpacing: 6,
@@ -168,20 +165,22 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   howToTitle: {
-    color: "#A5A0C8",
+    color: "#0E3B34",
     fontSize: 11,
     letterSpacing: 3,
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: 4,
   },
   howToLine: {
-    color: "#8B85B0",
+    color: "#0E3B34",
     fontSize: 13,
     lineHeight: 20,
+    opacity: 0.9,
   },
   version: {
-    color: "#575380",
+    color: "#0E3B34",
     fontSize: 11,
     marginTop: 18,
+    opacity: 0.7,
   },
 });
